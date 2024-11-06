@@ -105,14 +105,29 @@
     let characterPosition = 0; // Start at the bottommost step
     const climbSpeed = 0.02; // Slow down the climbing speed (adjusted)
 
-    // Handle scroll event to move the character
     let scrollAmount = 0; // Start at the bottom
-    window.addEventListener('wheel', (event) => {
-      // Slow down the scroll speed
-      scrollAmount += event.deltaY * 0.01; // Increase the position to move up
-      scrollAmount = Math.max(0, Math.min(scrollAmount, steps - 1)); // Prevent going out of bounds
-      characterPosition = scrollAmount; // Update character position based on scroll amount
-    });
+let touchStartY = 0; // To track the touch start position
+
+window.addEventListener('wheel', (event) => {
+  // Slow down the scroll speed
+  scrollAmount += event.deltaY * 0.01; // Increase the position to move up
+  scrollAmount = Math.max(0, Math.min(scrollAmount, steps - 1)); // Prevent going out of bounds
+  characterPosition = scrollAmount; // Update character position based on scroll amount
+});
+
+window.addEventListener('touchstart', (event) => {
+  // Get the initial touch position
+  touchStartY = event.touches[0].clientY;
+});
+
+window.addEventListener('touchmove', (event) => {
+  // Calculate the difference in touch position
+  const touchMoveY = touchStartY - event.touches[0].clientY; // Negative means scrolling up
+  scrollAmount += touchMoveY * 0.01; // Slow down the scroll speed
+  scrollAmount = Math.max(0, Math.min(scrollAmount, steps - 1)); // Prevent going out of bounds
+  characterPosition = scrollAmount; // Update character position based on touch scroll
+  touchStartY = event.touches[0].clientY; // Update the touch start position for next move
+});
 
     // Function to create a pulsing gradient texture for the portal rings
     function createPulsingGradientTexture() {
