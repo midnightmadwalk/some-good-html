@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spiral Staircase Around Old Tree - Three.js</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <!-- Include Three.js library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+    // Set up the scene, camera, and renderer
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Add sunlight (Directional light to simulate the Sun)
+    const sunlight = new THREE.DirectionalLight(0xFFFF00, 1.0); // Slight yellowish color for sunlight
+    sunlight.position.set(50, 50, 50); // Place the sun far away from the scene
+    sunlight.castShadow = true; // Enable shadows from the sunlight
+    sunlight.shadow.bias = -0.005; // Adjust bias to avoid shadow acne
+    sunlight.shadow.mapSize.width = 2048;  // Set high resolution shadow map
+    sunlight.shadow.mapSize.height = 2048; // Set high resolution shadow map
+    scene.add(sunlight);
+
+    // Set up ground to catch shadows (optional)
+    const groundGeometry = new THREE.PlaneGeometry(50, 50);
+    const groundMaterial = new THREE.ShadowMaterial({ opacity: 0.5 });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2; // Rotate to lie flat
+    ground.position.y = -0.5; // Position the ground below the staircase
+    ground.receiveShadow = true; // Enable the ground to receive shadows
+    scene.add(ground);
+
+    // Add the sun object (a glowing sphere representing the sun)
+    const sunGeometry = new THREE.SphereGeometry(5, 32, 32); // 5 units radius for the sun
+    const sunMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFFFF00, // Yellow color for the sun
+      emissive: 0xFFFF00, // Make it glow
+      emissiveIntensity: 1.5 // Increase glow intensity
+    });
+    const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+    sun.position.set(50, 50, 50); // Position it in the sky (similar to sunlight)
+    scene.add(sun);
+
+    // Set up the camera position initially
+    camera.position.set(0, 10, 20); // Camera behind the character, looking at the center
+    camera.lookAt(0, 10, 0);
+
+    // Create the tree and spiral staircase
+    const height = 30;
+    const steps = 40;
+
+    // Create the tree trunk (old-looking tree)
+    const trunkGeometry = new THREE.CylinderGeometry(1, 2, height, 16); // Tall, thick trunk
+    const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+    trunk.position.y = height / 2; // Position the trunk at the base
+    trunk.castShadow = true; // Enable the trunk to cast shadows
+    scene.add(trunk);
+
+    // Add branches to the tree (old tree with branches)
+    const branchGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+    const branchMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+    for (let i = 0; i < 8; i++) {
+      const branch = new THREE.Mesh(branchGeometry, branchMaterial);
+      branch.position.set(Math.random() * 3 - 1.5, height * Math.random(), Math.random() * 3 - 1.5);
+      branch.castShadow = true;
+      scene.add(branch);
+    }
+
+    // Create the spiral staircase around the tree
+    const stepGeometry = new THREE.BoxGeometry(0.5, 0.1, 0.5);
+    const stepMaterial = new THREE.MeshLambertMaterial({ color: 0xBDB76B });
+
+    const radius = 5;
+    const angleIncrement = Math.PI / 10;
+    const heightIncrement = height / steps;
+
+    for (let i = 0; i < steps; i++) {
+      const angle = i * angleIncrement;
+      const x = radius * Math.cos(angle);
+      const z = radius * Math.sin(angle);
+      const y = heightIncrement * i;
+
+      const step = new THREE.Mesh(stepGeometry, stepMaterial);
+      step.position.set(x, y, z);
+      step.rotation.y = -angle;
+      step.castShadow = true; // Enable each step to cast shadows
+      scene.add(step);
+    }
+
+    // Create a simple character (pink cube)
+    const characterGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+    const characterMaterial = new THREE.MeshLambertMaterial({ color: 0xFFC0CB }); // Pink color
+    const character = new THREE.Mesh(characterGeometry, characterMaterial);
+    character.castShadow = true; // Enable character to cast shadows
+    scene.add(character);
+
+    // Animation variables
+    let characterPosition = steps - 1; // Start at the topmost step (climbing down)
+    const climbSpeed = 0.02; // Slow down the climbing speed (adjusted)
+
+    // Handle scroll event to move the character
+    let scrollAmount = steps - 1; // Start at the top, so scrollAmount is set to the highest step
+    window.addEventListener('wheel', (event) => {
+      // Slow down the scroll speed
+      scrollAmount -= event.deltaY * 0.01; // Slow down the scroll speed
+      scrollAmount = Math.max(0, Math.min(scrollAmount, steps - 1)); // Prevent going out of bounds
+      characterPosition = scrollAmount; // Update character position based on scroll amount
+    });
+
+    // Create a paper with text on the sunnyside of the tree
+    function createTextPaper() {
+      // Create a canvas to draw text on it
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 512;
+      canvas.height = 256;
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'black';
+      ctx.font = '30px Arial';
+      ctx.fillText('Lorem Ipsum', 50, 100);
+
+      // Create texture from canvas
+      const texture = new THREE.CanvasTexture(canvas);
+      const paperGeometry = new THREE.PlaneGeometry(3, 1.5); // Size of the paper
+      const paperMaterial = new THREE.MeshBasicMaterial({ map: texture });
+      const paper = new THREE.Mesh(paperGeometry, paperMaterial);
+
+      // Position the paper on the sunnyside of the tree
+      paper.position.set(5, height / 2 + 5, 5); // Position relative to tree
+      paper.rotation.y = -Math.PI / 4; // Make the paper face the sunlight
+      scene.add(paper);
+      return paper;
+    }
+
+    const paper = createTextPaper(); // Create and add the paper
+
+    // Animation loop
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Get the character's position along the spiral path
+      const angle = characterPosition * angleIncrement;
+      const x = radius * Math.cos(angle);
+      const z = radius * Math.sin(angle);
+      const y = heightIncrement * characterPosition;
+
+      character.position.set(x, y, z);
+      character.rotation.y = -angle;
+
+      // Calculate the distance between character and paper
+      const paperPosition = paper.position; // Paper position
+      const distance = character.position.distanceTo(paperPosition);
+
+      // Scale the paper based on the distance (text grows as character approaches)
+      const scale = Math.max(0.5, Math.min(2, 2 - distance * 0.2)); // Scale range from 0.5 to 2
+      paper.scale.set(scale, scale, scale); // Apply the scale to the paper
+
+      // Render the scene and camera
+      renderer.render(scene, camera);
+    }
+
+    animate(); // Start the animation loop
+  </script>
+</body>
+</html>
