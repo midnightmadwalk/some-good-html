@@ -140,10 +140,9 @@
       paper.position.set(5, height / 2 + 5, 5); // Position relative to tree
       paper.rotation.y = -Math.PI / 4; // Make the paper face the sunlight
       scene.add(paper);
-      return paper;
     }
 
-    const paper = createTextPaper(); // Create and add the paper
+    createTextPaper(); // Call the function to add the paper with text
 
     // Animation loop
     function animate() {
@@ -158,19 +157,28 @@
       character.position.set(x, y, z);
       character.rotation.y = -angle;
 
-      // Calculate the distance between character and paper
-      const paperPosition = paper.position; // Paper position
-      const distance = character.position.distanceTo(paperPosition);
+      // Set camera orbit around the staircase
+      const cameraOrbitRadius = 10;
+      const cameraAngle = angle + Math.PI / 2; // Ensure the camera stays behind the character
 
-      // Scale the paper based on the distance (text grows as character approaches)
-      const scale = Math.max(0.5, Math.min(2, 2 - distance * 0.2)); // Scale range from 0.5 to 2
-      paper.scale.set(scale, scale, scale); // Apply the scale to the paper
+      const cameraX = radius * Math.cos(cameraAngle);
+      const cameraZ = radius * Math.sin(cameraAngle);
+      const cameraHeight = y + 5; // Set the camera height to slightly above the character
 
-      // Render the scene and camera
+      camera.position.set(cameraX, cameraHeight, cameraZ);
+      camera.lookAt(x, y, z); // Ensure the camera is always looking at the character
+
       renderer.render(scene, camera);
     }
 
-    animate(); // Start the animation loop
+    animate();
+
+    // Adjust camera on window resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
   </script>
 </body>
 </html>
