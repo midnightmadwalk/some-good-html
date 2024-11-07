@@ -23,60 +23,44 @@
       max-width: 80%;
       max-height: 80%;
     }
-
-
   </style>
 </head>
 <body>
-  <!-- Include Three.js library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/OBJLoader.js"></script>
+
+  <div id="overlay">
+    <img src="pictureok.jpg" alt="Portal Image">
+  </div>
 
   <script>
-    // Set up the scene, camera, and renderer
+    // Basic Three.js setup
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    // Set background color to light blue (for a blue sky effect)
-    scene.background = new THREE.Color(0x87CEEB); // Light blue color for the sky
+    scene.background = new THREE.Color(0x87CEEB); // Light blue sky
 
-    // Add sunlight (Directional light to simulate the Sun)
-    const sunlight = new THREE.DirectionalLight(0xFFFF00, 1.0); // Slight yellowish color for sunlight
-    sunlight.position.set(50, 50, 50); // Place the sun far away from the scene
-    sunlight.castShadow = true; // Enable shadows from the sunlight
-    sunlight.shadow.bias = -0.005; // Adjust bias to avoid shadow acne
-    sunlight.shadow.mapSize.width = 2048;  // Set high resolution shadow map
-    sunlight.shadow.mapSize.height = 2048; // Set high resolution shadow map
+    // Lighting
+    const sunlight = new THREE.DirectionalLight(0xFFFF00, 1.0);
+    sunlight.position.set(50, 50, 50);
+    sunlight.castShadow = true;
     scene.add(sunlight);
 
-    // Create the tree and spiral staircase
-    const height = 60;  // Increased tree height
-    const steps = 100;  // Increase number of steps for a longer staircase
-
-    // Create the tree trunk (old-looking tree)
-    const trunkGeometry = new THREE.CylinderGeometry(1, 2, height, 16); // Tall, thick trunk
+    // Tree trunk
+    const height = 60;
+    const steps = 100;
+    const trunkGeometry = new THREE.CylinderGeometry(1, 2, height, 16);
     const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
     const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-    trunk.position.y = height / 2; // Position the trunk at the base
-    trunk.castShadow = true; // Enable the trunk to cast shadows
+    trunk.position.y = height / 2;
     scene.add(trunk);
 
-    // Add branches to the tree (old tree with branches)
-    const branchGeometry = new THREE.SphereGeometry(0.5, 8, 8);
-    const branchMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
-    for (let i = 0; i < 8; i++) {
-      const branch = new THREE.Mesh(branchGeometry, branchMaterial);
-      branch.position.set(Math.random() * 3 - 1.5, height * Math.random(), Math.random() * 3 - 1.5);
-      branch.castShadow = true;
-      scene.add(branch);
-    }
-
-    // Create the spiral staircase around the tree
+    // Spiral staircase
     const stepGeometry = new THREE.BoxGeometry(0.5, 0.1, 0.5);
     const stepMaterial = new THREE.MeshLambertMaterial({ color: 0xBDB76B });
-
     const radius = 5;
     const angleIncrement = Math.PI / 10;
     const heightIncrement = height / steps;
@@ -86,214 +70,137 @@
       const x = radius * Math.cos(angle);
       const z = radius * Math.sin(angle);
       const y = heightIncrement * i;
-
       const step = new THREE.Mesh(stepGeometry, stepMaterial);
       step.position.set(x, y, z);
       step.rotation.y = -angle;
-      step.castShadow = true; // Enable each step to cast shadows
       scene.add(step);
     }
 
-    // Create a simple character (pink cube)
-    const characterGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
-    const characterMaterial = new THREE.MeshLambertMaterial({ color: 0xFFC0CB }); // Pink color
-    const character = new THREE.Mesh(characterGeometry, characterMaterial);
-    character.castShadow = true; // Enable character to cast shadows
-    scene.add(character);
+    // Load character model
+    let character, leftLeg, rightLeg;
+    const loader = new THREE.OBJLoader();
+    loader.load(
+      'FinalBaseMesh.obj',
+      function (object) {
+        object.scale.set(0.1, 0.1, 0.1);
+        object.position.y = 0;
 
-    // Animation variables
-    let characterPosition = 0; // Start at the bottommost step
-    const climbSpeed = 0.02; // Slow down the climbing speed (adjusted)
+        // Assuming you can access the legs via object.getObjectByName (adjust the names based on your model structure)
+        leftLeg = object.getObjectByName('leftLeg'); 
+        rightLeg = object.getObjectByName('rightLeg');
+        
+        scene.add(object);
+        character = object; // Set the character object after loading
+      },
+      function (xhr) { console.log((xhr.loaded / xhr.total * 100) + '% loaded'); },
+      function (error) { console.error('An error occurred while loading the .obj file:', error); }
+    );
 
-    let scrollAmount = 0; // Start at the bottom
-let touchStartY = 0; // To track the touch start position
-
-window.addEventListener('wheel', (event) => {
-  // Slow down the scroll speed
-  scrollAmount += event.deltaY * 0.01; // Increase the position to move up
-  scrollAmount = Math.max(0, Math.min(scrollAmount, steps - 1)); // Prevent going out of bounds
-  characterPosition = scrollAmount; // Update character position based on scroll amount
-});
-
-window.addEventListener('touchstart', (event) => {
-  // Get the initial touch position
-  touchStartY = event.touches[0].clientY;
-});
-
-window.addEventListener('touchmove', (event) => {
-  // Calculate the difference in touch position
-  const touchMoveY = touchStartY - event.touches[0].clientY; // Negative means scrolling up
-  scrollAmount += touchMoveY * 0.01; // Slow down the scroll speed
-  scrollAmount = Math.max(0, Math.min(scrollAmount, steps - 1)); // Prevent going out of bounds
-  characterPosition = scrollAmount; // Update character position based on touch scroll
-  touchStartY = event.touches[0].clientY; // Update the touch start position for next move
-});
-
-    // Function to create a pulsing gradient texture for the portal rings
-    function createPulsingGradientTexture() {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = 256;
-      canvas.height = 256;
-
-      // Create a gradient with green and purple (no yellow)
-      const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-      gradient.addColorStop(0, 'green');
-      gradient.addColorStop(1, 'purple');
-      
-      // Apply the gradient
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Create a texture from the canvas
-      const texture = new THREE.CanvasTexture(canvas);
-
-      // Animate the texture for the pulsing effect
-      let pulseTime = 0;
-      const pulseSpeed = 0.01;
-      function updatePulse() {
-        pulseTime += pulseSpeed;
-        const offset = Math.sin(pulseTime) * 0.5 + 0.5; // Pulse effect
-        gradient.addColorStop(0, `rgb(${Math.floor(255 * offset)}, 0, ${Math.floor(255 * (1 - offset))})`); // Modify gradient dynamically
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        texture.needsUpdate = true;
-      }
-
-      return { texture, updatePulse };
-    }
-
-    // Create a textboard in the shape of a ring (portal-like)
+    // Portal rings
+    const rings = [];
     function createTextRing(stepIndex) {
       const angle = stepIndex * angleIncrement;
       const x = radius * Math.cos(angle);
       const z = radius * Math.sin(angle);
       const y = heightIncrement * stepIndex;
 
-      // Create the pulsing gradient texture for the ring
-      const { texture, updatePulse } = createPulsingGradientTexture();
-
-      // Create a ring geometry (like a portal frame)
-      const geometry = new THREE.RingGeometry(2, 3, 32); // Inner and outer radius for the ring
-      const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, transparent: true });
-      const textRing = new THREE.Mesh(geometry, material);
-
-      // Position text rings along the path (spaced evenly)
-      textRing.position.set(x, y, z);
-      textRing.rotation.x = Math.PI / 2;  // Make the ring face towards the character
-      scene.add(textRing);
-
-      // Make the textboard always face the camera (billboard effect)
-      textRing.lookAt(camera.position); // Ensure the ring always faces the camera
-
-      // Update the pulse effect in the animation loop
-      function pulseEffect() {
-        updatePulse();
-      }
-
-      return { textRing, pulseEffect, x, y, z };
+      const geometry = new THREE.RingGeometry(2, 3, 32);
+      const material = new THREE.MeshBasicMaterial({ color: 0x8A2BE2, side: THREE.DoubleSide, transparent: true });
+      const ring = new THREE.Mesh(geometry, material);
+      ring.position.set(x, y, z);
+      ring.rotation.x = Math.PI / 2;
+      scene.add(ring);
+      return { ring, x, y, z };
     }
 
-// Create an array to store the rings (portals), starting from index 1
-const rings = [];
-for (let i = 1; i < 5; i++) {  // Start from index 1 to skip the first ring
-  const { textRing, pulseEffect, x, y, z } = createTextRing(i * Math.floor(steps / 5));
-  rings.push({ textRing, pulseEffect, x, y, z });
-}
+    for (let i = 1; i < 5; i++) {
+      rings.push(createTextRing(i * Math.floor(steps / 5)));
+    }
 
-    // Create a soil layer under the character and tree (Ground)
-    const groundGeometry = new THREE.PlaneGeometry(100, 100); // Large enough to cover the scene
-    const groundMaterial = new THREE.ShadowMaterial({ opacity: 0.5 });
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;  // Rotate to make it flat on the ground
-    ground.position.y = -0.5;  // Position it just below the tree
-    ground.receiveShadow = true; // Ground will receive shadows
-    scene.add(ground);
+    // Scroll and animation control
+    let characterPosition = 0;
+    let scrollAmount = 0;
+    let touchStartY = 0;
+    let hasBlinked = false;
+    const overlay = document.getElementById('overlay');
 
-    // Blink effect and overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'overlay';
-    document.body.appendChild(overlay);
+    window.addEventListener('wheel', (event) => {
+      scrollAmount += event.deltaY * 0.01;
+      scrollAmount = Math.max(0, Math.min(scrollAmount, steps - 1));
+      characterPosition = scrollAmount;
+    });
 
-    // Image to show when character passes through portal
-    const image = document.createElement('img');
-    image.src = 'pictureok.jpg';  // Update the path to your image
-    overlay.appendChild(image);
+    window.addEventListener('touchstart', (event) => {
+      touchStartY = event.touches[0].clientY;
+    });
 
-    // Flags to manage the blink and scroll behavior
-    let hasBlinked = false;  // Track if the page has already blinked
+    window.addEventListener('touchmove', (event) => {
+      const touchMoveY = touchStartY - event.touches[0].clientY;
+      scrollAmount += touchMoveY * 0.01;
+      scrollAmount = Math.max(0, Math.min(scrollAmount, steps - 1));
+      characterPosition = scrollAmount;
+      touchStartY = event.touches[0].clientY;
+    });
 
-    // Animation loop
+    // Function to animate legs
+    function animateLegs() {
+      if (leftLeg && rightLeg) {
+        const walkCycleSpeed = 0.3; // Speed of leg movement
+        const walkAmplitude = 2; // How much the legs move up/down
+
+        // For left leg
+        leftLeg.rotation.x = Math.sin(characterPosition * walkCycleSpeed) * walkAmplitude;
+        // For right leg
+        rightLeg.rotation.x = Math.cos(characterPosition * walkCycleSpeed) * walkAmplitude;
+      }
+    }
+
     function animate() {
       requestAnimationFrame(animate);
 
-      let isInPortal = false;  // Flag to track if the character is in any portal ring
+      if (character) {
+        const angle = characterPosition * angleIncrement;
+        const x = radius * Math.cos(angle);
+        const z = radius * Math.sin(angle);
+        const y = heightIncrement * characterPosition;
 
-      // Check if the character is inside any portal ring
-      rings.forEach(ring => {
-        const distance = Math.sqrt(
-          Math.pow(character.position.x - ring.x, 2) +
-          Math.pow(character.position.z - ring.z, 2) +
-          Math.pow(character.position.y - ring.y, 2)
-        );
-        if (distance < 3) {  // If the character is within a threshold distance of the portal
-          isInPortal = true;
+        character.position.set(x, y, z);
+        character.rotation.y = -angle;
+
+        // Animate the legs while the character is climbing
+        animateLegs();
+
+        let isInPortal = false;
+        rings.forEach(({ ring, x: ringX, y: ringY, z: ringZ }) => {
+          const distance = Math.sqrt(
+            Math.pow(character.position.x - ringX, 2) +
+            Math.pow(character.position.z - ringZ, 2) +
+            Math.pow(character.position.y - ringY, 2)
+          );
+          if (distance < 3) isInPortal = true;
+        });
+
+        if (isInPortal && !hasBlinked) {
+          overlay.style.display = 'flex';
+          hasBlinked = true;
         }
-      });
 
-      // Trigger the blink effect and show the overlay if character is in portal
-      if (isInPortal && !hasBlinked) {
-        // Trigger the blink effect only once
-        document.body.classList.add('blink'); // Trigger the blink effect
-        overlay.style.display = 'flex';  // Show the overlay with the image
+        if (!isInPortal && hasBlinked) {
+          overlay.style.display = 'none';
+          hasBlinked = false;
+        }
 
-        hasBlinked = true; // Set flag to true so the blink only happens once
+        const cameraAngle = angle + Math.PI / 2;
+        const cameraX = radius * Math.cos(cameraAngle);
+        const cameraZ = radius * Math.sin(cameraAngle);
+        camera.position.set(cameraX, y + 5, cameraZ);
+        camera.lookAt(x, y, z);
       }
-
-      // Update the pulse effect for each ring
-      rings.forEach(ring => {
-        ring.pulseEffect();
-      });
-
-      // Get the character's position along the spiral path
-      const angle = characterPosition * angleIncrement;
-      const x = radius * Math.cos(angle);
-      const z = radius * Math.sin(angle);
-      const y = heightIncrement * characterPosition;
-
-      character.position.set(x, y, z);
-      character.rotation.y = -angle;
-
-      // Update rings' positions
-      for (let i = 0; i < rings.length; i++) {
-        rings[i].textRing.position.set(rings[i].x, rings[i].y, rings[i].z);
-        rings[i].textRing.lookAt(camera.position);
-      }
-
-      // Set camera orbit around the staircase
-      const cameraOrbitRadius = 10;
-      const cameraAngle = angle + Math.PI / 2;
-      const cameraX = radius * Math.cos(cameraAngle);
-      const cameraZ = radius * Math.sin(cameraAngle);
-      const cameraHeight = y + 5; // Set the camera height to slightly above the character
-
-      camera.position.set(cameraX, cameraHeight, cameraZ);
-      camera.lookAt(x, y, z);
 
       renderer.render(scene, camera);
     }
 
-    // Scroll event listener to remove the image and stop the blink effect
-    window.addEventListener('wheel', () => {
-      if (hasBlinked) {
-        // Remove the blink effect and hide the image when scrolling
-        document.body.classList.remove('blink');
-        overlay.style.display = 'none';  // Hide the overlay
-        hasBlinked = false;  // Reset the blink flag so it can happen again if needed
-      }
-    });
-
     animate();
   </script>
 </body>
-</html> 
+</html>
